@@ -48,7 +48,7 @@
     NSMutableArray *mutableFetchResults = [NSMutableArray array];
     CouchQuery* query = [database getAllDocuments];
     for (CouchQueryRow* row in [query rows]) {
-        Event* event = [[[Event alloc] initWithDocument:row.document] autorelease];
+        Event* event = [Event modelForDocument:row.document];
         [mutableFetchResults addObject: event];
     }
         
@@ -139,7 +139,7 @@
 		
         // Delete the managed object at the given index path.
 		Event *eventToDelete = [eventsArray objectAtIndex:indexPath.row];
-		[eventToDelete deleteDocument];
+		eventToDelete.database = nil;  // deletes the document
 		
 		// Update the array and table view.
         [eventsArray removeObjectAtIndex:indexPath.row];
@@ -174,10 +174,10 @@
 	NSDate* creationDate = [location timestamp];
 #endif
 	
-	Event* event = [[[Event alloc] initWithDatabase:database
-                                           latitude:coordinate.latitude
-                                          longitude:coordinate.longitude
-                                       creationDate:creationDate] autorelease];
+	Event* event = [Event eventWithDatabase:database
+                                   latitude:coordinate.latitude
+                                  longitude:coordinate.longitude
+                               creationDate:creationDate];
 	
 	/*
 	 Since this is a new event, and events are displayed with most recent events at the top of the list,

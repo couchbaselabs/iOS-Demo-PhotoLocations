@@ -18,71 +18,45 @@ static UIImage* MakeThumbnail(UIImage* image, CGFloat dimensions);
 @implementation Event
 
 
-- (id)initWithDatabase:(CouchDatabase*)database 
-              latitude:(CLLocationDegrees)latitude
-             longitude:(CLLocationDegrees)longitude
-          creationDate:(NSDate*)creationDate {
-    self = [super init];
-    if (self) {
-        NSDictionary* properties = [NSDictionary dictionaryWithObjectsAndKeys:
-                                    [NSNumber numberWithDouble: latitude], @"latitude",
-                                    [NSNumber numberWithDouble: longitude], @"longitude",
-                                    [RESTBody JSONObjectWithDate: creationDate], @"creationDate",
-                                    nil];
-        document = [[database untitledDocument] retain];
-        RESTOperation* op = [document putProperties: properties];
-        if (![op wait]) {
-            // TODO: report error
-            NSLog(@"Creating Event document failed! %@", op.error);
-        }
++ (Event*) eventWithDatabase:(CouchDatabase*)database 
+                    latitude:(CLLocationDegrees)latitude
+                   longitude:(CLLocationDegrees)longitude
+                creationDate:(NSDate*)creationDate {
+    NSDictionary* properties = [NSDictionary dictionaryWithObjectsAndKeys:
+                                [NSNumber numberWithDouble: latitude], @"latitude",
+                                [NSNumber numberWithDouble: longitude], @"longitude",
+                                [RESTBody JSONObjectWithDate: creationDate], @"creationDate",
+                                nil];
+    CouchDocument* document = [[database untitledDocument] retain];
+    RESTOperation* op = [document putProperties: properties];
+    if (![op wait]) {
+        // TODO: report error
+        NSLog(@"Creating Event document failed! %@", op.error);
+        return nil;
     }
-    return self;
-}
-
-
-- (id)initWithDocument:(CouchDocument*)aDocument {
-    self = [super init];
-    if (self) {
-        document = [aDocument retain];
-    }
-    return self;
+    return (Event*)[self modelForDocument:document];
 }
 
 
 - (void)dealloc {
-    [document release];
     [thumbnail release];
     [super dealloc];
 }
 
 
-- (void) deleteDocument {
-    [[document DELETE] start];
-    [document release];
-    document = nil;
-}
+@dynamic latitude, longitude;
 
 
 - (NSDate*) creationDate {
-    NSString* dateString = [document.properties objectForKey: @"creationDate"];
+    NSString* dateString = [self getValueOfProperty: @"creationDate"];
     return [RESTBody dateWithJSONObject: dateString];
-}
-
-
-- (NSNumber*) latitude {
-    return [document.properties objectForKey: @"latitude"];
-}
-
-
-- (NSNumber*) longitude {
-    return [document.properties objectForKey: @"longitude"];
 }
 
 
 - (UIImage*)thumbnail {
     // The thumbnail is stored inline as Base64-encoded data, because it's small.
     if (!thumbnail) {
-        NSString* thumbnailBase64 = [document.properties objectForKey: @"thumbnail"];
+        NSString* thumbnailBase64 = [self getValueOfProperty: @"thumbnail"];
         NSData* thumbnailData = [RESTBody dataWithBase64: thumbnailBase64];
         if (thumbnailData) {
             thumbnail = [[UIImage alloc] initWithData: thumbnailData];
@@ -96,7 +70,7 @@ static UIImage* MakeThumbnail(UIImage* image, CGFloat dimensions);
     // The photo is stored as an attachment, so it is fetched separately on demand.
     if (!checkedForPhoto) {
         checkedForPhoto = YES;
-        CouchAttachment* attach = [document.currentRevision attachmentNamed: @"photo"];
+        CouchAttachment* attach = [self.document.currentRevision attachmentNamed: @"photo"];
         RESTOperation* op = [attach GET];
         if ([op isSuccessful]) {
             NSData* imageData = op.responseBody.content;
@@ -124,17 +98,12 @@ static UIImage* MakeThumbnail(UIImage* image, CGFloat dimensions);
     }
     
     // Save the thumbnail inline:
-    NSMutableDictionary* properties = [[document.properties mutableCopy] autorelease];
-    [properties setValue:[RESTBody base64WithData:thumbnailData] forKey:@"thumbnail"];
-    RESTOperation* op = [document putProperties:properties];
-    if (![op wait]) {
-        // TODO: Report error
-        NSLog(@"Saving Event document failed! %@", op.error);
-    }
+    [self setValue:thumbnailData ofProperty:@"thumbnail"];
     
     // Save the photo to an attachment, asynchronously:
-    CouchAttachment* attach = [document.currentRevision createAttachmentWithName:@"photo"
+    CouchAttachment* attach = [self.document.currentRevision createAttachmentWithName:@"photo"
                                                                             type:@"image/png"];
+    RESTOperation* op;
     if (newPhoto) {
         op = [attach PUT: UIImagePNGRepresentation(newPhoto) contentType: @"image/png"];
     } else {

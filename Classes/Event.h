@@ -6,27 +6,20 @@
   Version: 1.1
  */
 
+#import <CouchCocoa/CouchModel.h>
 #import <CoreLocation/CoreLocation.h>
-@class CouchDatabase, CouchDocument;
 
-@interface Event : NSObject  {
-    CouchDocument* document;
+@interface Event : CouchModel  {
     UIImage* photo;
     UIImage* thumbnail;
     BOOL checkedForPhoto;
 }
 
 /** Creates a brand-new event and adds a document for it to the database. */
-- (id)initWithDatabase:(CouchDatabase*)database
-              latitude:(CLLocationDegrees)latitude
-             longitude:(CLLocationDegrees)longitude
-          creationDate:(NSDate*)creationDate;
-
-/** Instantiates an Event object for an already-existing document. */
-- (id)initWithDocument:(CouchDocument*)document;
-
-/** Deletes the event's document from the database permanently. */
-- (void) deleteDocument;
++ (Event*) eventWithDatabase:(CouchDatabase*)database
+                    latitude:(CLLocationDegrees)latitude
+                   longitude:(CLLocationDegrees)longitude
+                creationDate:(NSDate*)creationDate;
 
 @property (nonatomic, readonly) NSDate *creationDate;
 @property (nonatomic, readonly) NSNumber* latitude;
