@@ -5,7 +5,7 @@
   Version: 1.1
  */
 
-#import <Couchbase/CouchbaseEmbeddedServer.h>
+#import <Couchbase/CouchbaseMobile.h>
 @class RootViewController, CouchServer;
 
 @interface LocationsAppDelegate : NSObject <UIApplicationDelegate, CouchbaseDelegate> {
